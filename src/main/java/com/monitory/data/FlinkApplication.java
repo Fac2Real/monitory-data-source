@@ -1,4 +1,4 @@
-package com.factoreal.data;
+package com.monitory.data;
 
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.configuration.Configuration;
