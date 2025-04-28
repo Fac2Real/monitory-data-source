@@ -1,0 +1,17 @@
+# Flink 기본 설정
+jobmanager:
+  rpc:
+    address: localhost
+    port: 6123
+  heap:
+    mb: 1024
+  log:
+    dir: /Downloads
+
+taskmanager:
+  heap:
+    mb: 2048
+  numberOfTaskSlots: 1
+
+rest:
+  port: 8081
