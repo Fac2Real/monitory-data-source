@@ -41,8 +41,11 @@ bin/
 ### Mac OS ###
 .DS_Store
 
-# 인증서 파일 무시
+### 인증서 파일 ###
 cert/
 *.pem
 *.crt
 *.key
+
+### application.properties ###
+/application.properties

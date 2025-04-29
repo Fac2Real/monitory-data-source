@@ -1,5 +1,6 @@
 package com.monitory.data.sources;
 
+import com.monitory.data.config.MqttConfig;
 import com.monitory.data.utils.SslUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.connector.source.ReaderOutput;
@@ -49,15 +50,16 @@ public class MqttReader implements SourceReader <String, MqttSplit> {
     @Override
     public void start() {
         try {
-            String broker = "ssl://a2n7kxevn6fh72-ats.iot.ap-northeast-2.amazonaws.com:8883";
-            String topic = "#";
-            String clientId = "INF_TEST";
+            String broker = MqttConfig.get("AWS_IOT_BROKER");
+            String topic = MqttConfig.get("AWS_IOT_TOPIC");
+            String clientId = MqttConfig.get("AWS_IOT_CLIENT_ID");
+
             SslUtil sslUtil = new SslUtil();
             SSLSocketFactory temp = sslUtil.getSocketFactory(
-                    "src/main/resources/certs/root.pem",
-                    "src/main/resources/certs/54e5d2549e672108375364398317635c85a2a4082c90ff9378d02a118bd41800-certificate.pem.crt",
-                    "src/main/resources/certs/54e5d2549e672108375364398317635c85a2a4082c90ff9378d02a118bd41800-private.pem.key"
-            );
+                    MqttConfig.get("AWS_IOT_CA_PEM_PATH"),
+                    MqttConfig.get("AWS_IOT_CERT_PATH"),
+                    MqttConfig.get("AWS_IOT_PRIVATE_KEY_PATH")
+                    );
             MqttConnectOptions options = new MqttConnectOptions();
             options.setSocketFactory(temp);
             options.setCleanSession(true);
@@ -106,7 +108,7 @@ public class MqttReader implements SourceReader <String, MqttSplit> {
             }
 
         } catch (Exception e) {
-            log.error("❌ MQTT Connection setup 중 예외 발생", e);
+//            log.error("❌ MQTT Connection setup 중 예외 발생", e);
         }
     }
     /**
