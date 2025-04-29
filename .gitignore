@@ -40,3 +40,9 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+# resources 안의 certs 폴더 무시
+/src/main/resources/certs/
+
+# resources 안의 application.properties 무시
+/src/main/resources/application.properties
