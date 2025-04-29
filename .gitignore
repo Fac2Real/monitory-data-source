@@ -41,11 +41,8 @@ bin/
 ### Mac OS ###
 .DS_Store
 
-### 인증서 파일 ###
-cert/
-*.pem
-*.crt
-*.key
+# resources 안의 certs 폴더 무시
+/src/main/resources/certs/
 
-### application.properties ###
-/application.properties
+# resources 안의 application.properties 무시
+/src/main/resources/application.properties
