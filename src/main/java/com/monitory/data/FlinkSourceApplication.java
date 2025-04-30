@@ -8,7 +8,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
-public class FlinkApplication {
+public class FlinkSourceApplication {
     public static void main (String [] args) throws Exception {
         // 1. Flink 환경 설정
         Configuration conf = new Configuration();
@@ -26,6 +26,6 @@ public class FlinkApplication {
         transformedStream.print();
 
         // 5. 실행
-        env.execute("Flink DataStream Example");
+        env.execute("Flink to Kafka Produce");
     }
 }
