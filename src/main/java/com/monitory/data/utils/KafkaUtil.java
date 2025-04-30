@@ -25,14 +25,14 @@ public class KafkaUtil {
 
                                     if (zoneId != null && equipId != null) {
                                         return "EQUIPMENT";
-                                    } else if (equipId != null) {
+                                    } else if (zoneId != null && equipId == null) {
                                         return "ENVIRONMENT";
                                     } else {
-                                        return "sensor/unknown_topic";
+                                        return "sensor.unknown_topic";
                                     }
 
                                 } catch (Exception e) {
-                                    return "sensor/error_topic";
+                                    return "sensor.error_topic";
                                 }
                             })
                         .build()
