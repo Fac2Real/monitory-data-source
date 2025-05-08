@@ -47,15 +47,6 @@ jobs:
           echo "${{ secrets.AWS_IOT_CERT }}" > resources/cert/certificate.pem.crt
         shell: bash
 
-      - name: Verify created files
-        run: |
-          echo "--- Verifying application.properties (src/main/resources/application.properties): ---"
-          cat src/main/resources/application.properties || echo "File not found."
-          echo "--- Verifying certificate directory (resources/cert/): ---"
-          ls -la resources/cert/ || echo "Directory not found or empty."
-        shell: bash
-
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
