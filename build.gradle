@@ -1,16 +1,63 @@
 plugins {
     id 'java'
     id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'org.example'
 version = '1.0-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
 
 configurations {
     compileOnly {
         extendsFrom annotationProcessor
     }
 }
+
+application {
+    mainClass = 'com.monitory.data.FlinkSourceApplication'
+}
+
+shadowJar {
+    archiveClassifier.set('')
+    mergeServiceFiles()
+    manifest {
+        attributes 'Main-Class': 'com.monitory.data.FlinkSourceApplication'
+    }
+}
+
+tasks.named('startScripts') {
+    dependsOn shadowJar
+}
+
+tasks.named('jar') {
+    enabled = false
+}
+
+tasks.withType(Tar) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+tasks.withType(Zip) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+distributions {
+    main {
+        contents {
+            into('lib') {
+                from shadowJar
+            }
+        }
+    }
+}
+
+// 기존 jar 대신 shadowJar를 빌드
+tasks.build.dependsOn tasks.shadowJar
 
 repositories {
     mavenCentral()
