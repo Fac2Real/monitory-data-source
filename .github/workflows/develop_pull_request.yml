@@ -1,17 +1,17 @@
-name: Test and Build Image to ECR
+name: Build Image to ECR with Certs
 
 on:
   push:
     branches:
-      - develop
+      - chore/build-and-deploy
 
 jobs:
-  test:
+  build-and-push-image:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -33,6 +33,29 @@ jobs:
       - name: Test
         run: ./gradlew test
 
+      - name: Create application.properties
+        run: |
+          mkdir -p src/main/resources 
+          echo "${{ secrets.APPLICATION_PROPERTIES }}" > src/main/resources/application.properties
+        shell: bash
+
+      - name: Create certificate files
+        run: |
+          mkdir -p resources/cert # 프로젝트 루트에 resources/cert 디렉토리 생성
+          echo "${{ secrets.AWS_IOT_ROOT }}" | base64 --decode > resources/cert/root.pem
+          echo "${{ secrets.AWS_IOT_PRIVATE_KEY }}" | base64 --decode > resources/cert/private.pem.key
+          echo "${{ secrets.AWS_IOT_CERT }}" | base64 --decode > resources/cert/certificate.pem.crt
+        shell: bash
+
+      - name: Verify created files
+        run: |
+          echo "--- Verifying application.properties (src/main/resources/application.properties): ---"
+          cat src/main/resources/application.properties || echo "File not found."
+          echo "--- Verifying certificate directory (resources/cert/): ---"
+          ls -la resources/cert/ || echo "Directory not found or empty."
+        shell: bash
+
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -52,3 +75,12 @@ jobs:
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Clean up sensitive files from runner
+        if: always()
+        run: |
+          echo "Cleaning up sensitive files from GitHub Runner..."
+          rm -f src/main/resources/application.properties
+          rm -rf resources/cert
+          echo "Cleanup complete."
+        shell: bash
