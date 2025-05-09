@@ -41,10 +41,10 @@ jobs:
 
       - name: Create certificate files
         run: |
-          mkdir -p resources/cert # 프로젝트 루트에 resources/cert 디렉토리 생성
-          echo "${{ secrets.AWS_IOT_ROOT }}" > resources/cert/root.pem
-          echo "${{ secrets.AWS_IOT_PRIVATE_KEY }}" > resources/cert/private.pem.key
-          echo "${{ secrets.AWS_IOT_CERT }}" > resources/cert/certificate.pem.crt
+          mkdir -p src/main/resources/certs
+          echo "${{ secrets.AWS_IOT_ROOT }}" > src/main/resources/certs/root.pem
+          echo "${{ secrets.AWS_IOT_PRIVATE_KEY }}" > src/main/resources/certs/private.pem.key
+          echo "${{ secrets.AWS_IOT_CERT }}" > src/main/resources/certs/certificate.pem.crt
         shell: bash
 
       - name: Configure AWS credentials
