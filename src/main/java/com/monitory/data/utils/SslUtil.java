@@ -23,31 +23,48 @@ public class SslUtil {
     /**
      * 📦 MQTT 연결용 SSLSocketFactory 생성 메서드
      *
-     * @param caCrtFile AWS 루트 인증서 경로 (root.pem)
-     * @param crtFile   디바이스 인증서 경로 (.pem.crt)
-     * @param keyFile   디바이스 개인키 경로 (.pem.key)
+     * @param caCrtResourcePath AWS 루트 인증서 클래스패스 경로 (예: "/certs/root.pem")
+     * @param crtResourcePath   디바이스 인증서 클래스패스 경로 (예: "/certs/certificate.pem.crt")
+     * @param keyResourcePath   디바이스 개인키 클래스패스 경로 (예: "/certs/private.pem.key")
      * @return SSLSocketFactory 객체
      * @throws Exception 모든 예외 전달 (파일, 키, 인증서 파싱 오류 등)
      */
-    public static SSLSocketFactory getSocketFactory(String caCrtFile, String crtFile, String keyFile) throws Exception {
+    public static SSLSocketFactory getSocketFactory(String caCrtResourcePath, String crtResourcePath, String keyResourcePath) throws Exception {
 
         // BouncyCastle Provider 등록 (PEM 파싱용)
         Security.addProvider(new BouncyCastleProvider());
 
-        // CA 인증서와 디바이스 인증서
+        // CA 인증서
+        InputStream caInputStream = SslUtil.class.getResourceAsStream(caCrtResourcePath);
+        if (caInputStream == null) {
+            throw new FileNotFoundException("CA certificate resource not found in classpath: " + caCrtResourcePath);
+        }
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
-        X509Certificate caCert = (X509Certificate) cf.generateCertificate(new FileInputStream(caCrtFile));
-        X509Certificate cert = (X509Certificate) cf.generateCertificate(new FileInputStream(crtFile));
+        X509Certificate caCert = (X509Certificate) cf.generateCertificate(caInputStream);
+        caInputStream.close();
+
+        // --- 디바이스 인증서 로드 (getResourceAsStream 사용) ---
+        InputStream certInputStream = SslUtil.class.getResourceAsStream(crtResourcePath);
+        if (certInputStream == null) {
+            throw new FileNotFoundException("Device certificate resource not found in classpath: " + crtResourcePath);
+        }
+        X509Certificate cert = (X509Certificate) cf.generateCertificate(certInputStream);
+        certInputStream.close(); // InputStream 사용 후 닫기
 
         // 디바이스 개인키 PEM → Keypair 변환
-        PEMParser pemParser = new PEMParser(new FileReader(keyFile));
+        InputStream keyInputStream = SslUtil.class.getResourceAsStream(keyResourcePath);
+        if (keyInputStream == null) {
+            throw new FileNotFoundException("Device private key resource not found in classpath: " + keyResourcePath);
+        }
+
+        PEMParser pemParser = new PEMParser(new InputStreamReader(keyInputStream));
         Object object = pemParser.readObject();
         JcaPEMKeyConverter converter = new JcaPEMKeyConverter().setProvider("BC");
         KeyPair key = converter.getKeyPair((PEMKeyPair) object);
         pemParser.close();
+        keyInputStream.close();
 
         // 키스토어 구성 (디바이스 인증서 + 개인키)
-//        KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
         KeyStore ks = KeyStore.getInstance("JKS");
         ks.load(null, null);
         ks.setCertificateEntry("cert-alias", cert);
