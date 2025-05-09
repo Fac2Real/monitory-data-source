@@ -24,9 +24,11 @@ public class KafkaUtil {
                                     String equipId = json.path("equipId").asText(null);
 
                                     if (zoneId != null && !zoneId.isEmpty() && equipId != null && !equipId.isEmpty()) {
-                                        return "EQUIPMENT";
-                                    } else if (zoneId != null && !zoneId.isEmpty() && (equipId == null || equipId.isEmpty())) {
-                                        return "ENVIRONMENT";
+                                        if (zoneId.equals(equipId)) {
+                                            return "ENVIRONMENT";
+                                        } else {
+                                            return "EQUIPMENT";
+                                        }
                                     } else {
                                         return "sensor.unknown_topic";
                                     }
