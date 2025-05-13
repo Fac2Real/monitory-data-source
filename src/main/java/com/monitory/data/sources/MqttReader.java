@@ -11,6 +11,9 @@ import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLSocketFactory;
 import java.util.List;
@@ -27,15 +30,19 @@ public class MqttReader implements SourceReader <String, MqttSplit> {
     // Flink에서 SourceReader와 상호작용하는 데 필요한 context
     private final SourceReaderContext sourceReaderContext;
     // MQTT로 읽은 메시지를 임시로 저장할 큐
-    private final Queue<String> messageQueue = new ConcurrentLinkedQueue<>();
+    private final BlockingQueue<String> messageQueue = new LinkedBlockingQueue<>();
+    private CompletableFuture<Void> availabilityFuture = new CompletableFuture<>();
     // 메시지를 계속 읽어오게 할지 여부
     private volatile boolean running = true;
     private MqttClient client;
 
-    IMqttMessageListener mqttMessageListener = new IMqttMessageListener() {
-        @Override
-        public void messageArrived(String s, MqttMessage mqttMessage) throws Exception {
-            messageQueue.add(new String(mqttMessage.getPayload()));
+    private final IMqttMessageListener mqttMessageListener = (topic, message) -> {
+        messageQueue.add(new String(message.getPayload()));
+        synchronized (messageQueue) {
+            if (availabilityFuture.isDone()) {
+                availabilityFuture = new CompletableFuture<>();
+            }
+            availabilityFuture.complete(null); // 메시지 도착 시 신호 전송
         }
     };
 
@@ -115,15 +122,21 @@ public class MqttReader implements SourceReader <String, MqttSplit> {
      * 큐에서 메시지를 하나씩 꺼내서 Flink에 전달
      * - 메시지가 있으면 데이터를 전달하고, 계속 받을 수 있음을 알림
      * - 메시지가 없으면 더 이상 데이터를 받을 수 없다고 알림
+     * - pollNext() 수정: 메시지 처리 후 availabilityFuture 관리
      */
     @Override
-    public InputStatus pollNext(ReaderOutput<String> output) {
+    public InputStatus pollNext(ReaderOutput<String> output) throws InterruptedException{
         String msg = messageQueue.poll();
         if (msg != null) {
             output.collect(msg);
             return InputStatus.MORE_AVAILABLE;
+        } else {
+            // 메시지 없을 때 availabilityFuture 리셋
+            synchronized (messageQueue) {
+                availabilityFuture = new CompletableFuture<>();
+            }
+            return InputStatus.NOTHING_AVAILABLE;
         }
-        return InputStatus.NOTHING_AVAILABLE;
     }
     /**
      * 체크포인트 상태를 스냅샷으로 저장하는 메소드
@@ -139,7 +152,9 @@ public class MqttReader implements SourceReader <String, MqttSplit> {
      */
     @Override
     public CompletableFuture<Void> isAvailable() {
-        return CompletableFuture.completedFuture(null);
+        synchronized (messageQueue) {
+            return availabilityFuture;
+        }
     }
 
     @Override
