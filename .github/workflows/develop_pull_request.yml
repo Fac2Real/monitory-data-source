@@ -91,7 +91,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Deploy to EC2 via SSH
-        uses: appleboy/ssh-action@v1
+        uses : appleboy/ssh-action@master
         with:
           host: ${{ secrets.AWS_EC2_HOST }}
           username: ${{ secrets.AWS_EC2_USER }}
