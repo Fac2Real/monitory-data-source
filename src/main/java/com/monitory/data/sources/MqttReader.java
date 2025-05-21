@@ -115,7 +115,7 @@ public class MqttReader implements SourceReader <String, MqttSplit> {
             }
 
         } catch (Exception e) {
-//            log.error("❌ MQTT Connection setup 중 예외 발생", e);
+            log.error("❌ MQTT Connection setup 중 예외 발생", e);
         }
     }
     /**
