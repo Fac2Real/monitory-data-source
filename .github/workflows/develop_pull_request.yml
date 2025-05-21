@@ -3,7 +3,7 @@ name: Build Image to ECR with Certs
 on:
   push:
     branches:
-      - chore/build-and-deploy
+      - develop
 
 jobs:
   build-and-push-image:
