@@ -45,6 +45,9 @@ dependencies {
 
     // S3
     implementation "software.amazon.awssdk:s3:2.31.29"
+
+    // Kinesis
+    implementation("org.apache.flink:flink-connector-kinesis:5.0.0-1.20")
 }
 test {
     useJUnitPlatform()

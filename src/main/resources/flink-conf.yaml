@@ -11,7 +11,7 @@ jobmanager:
 taskmanager:
   heap:
     mb: 2048
-  numberOfTaskSlots: 8
+  numberOfTaskSlots: 4
 
 rest:
   port: 8081

@@ -1,12 +1,19 @@
 package com.monitory.data;
 
-import com.monitory.data.sources.MqttSource;
+import com.monitory.data.utils.KinesisSourceUtil;
+import org.apache.flink.connector.kinesis.source.KinesisStreamsSource;
 import com.monitory.data.transformations.TimeStampAssigner;
 import com.monitory.data.utils.KafkaUtil;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.connector.kinesis.source.config.KinesisSourceConfigOptions;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+
+
+import java.util.Properties;
 
 public class FlinkSourceApplication {
     public static void main (String [] args) throws Exception {
@@ -14,8 +21,16 @@ public class FlinkSourceApplication {
         Configuration conf = new Configuration();
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(conf);
 
-        // 2. 데이터 소스
-        DataStream<String> sourceStream = env.fromSource(new MqttSource(), WatermarkStrategy.noWatermarks(), "MQTT-Source");
+
+        // 2. 데이터 소스 설정
+        KinesisStreamsSource<String> kinesisStreamSource = KinesisSourceUtil.createKinesisSource();
+
+        DataStream<String> sourceStream = env.fromSource(
+                kinesisStreamSource, // 변경된 소스 객체 사용
+                WatermarkStrategy.noWatermarks(),
+                "Kinesis-Streams-Source" // 이름 변경
+        ).returns(TypeInformation.of(String.class));
+        //        DataStream<String> sourceStream = env.fromSource(new MqttSource(), WatermarkStrategy.noWatermarks(), "MQTT-Source");
 
         // 3. 데이터 처리: Time Stamp 출력
         DataStream<String> transformedStream = sourceStream
