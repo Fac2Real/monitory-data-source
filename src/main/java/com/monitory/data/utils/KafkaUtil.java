@@ -19,18 +19,12 @@ public class KafkaUtil {
                             .setTopicSelector((element) -> {
                                 try {
                                     JsonNode json = mapper.readTree(element);
+                                    String category = json.path("category").asText(null);
 
-                                    String zoneId = json.path("zoneId").asText(null);
-                                    String equipId = json.path("equipId").asText(null);
-
-                                    if (zoneId != null && !zoneId.isEmpty() && equipId != null && !equipId.isEmpty()) {
-                                        if (zoneId.equals(equipId)) {
-                                            return "ENVIRONMENT";
-                                        } else {
-                                            return "EQUIPMENT";
-                                        }
+                                    if (category != null && !category.isEmpty()) {
+                                        return category;
                                     } else {
-                                        return "sensor.unknown_topic";
+                                        return "sensor.unknown_category_topic";
                                     }
 
                                 } catch (Exception e) {
