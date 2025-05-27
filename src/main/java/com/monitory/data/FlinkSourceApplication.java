@@ -3,7 +3,6 @@ package com.monitory.data;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.monitory.data.sinks.S3WindowFunction;
-import com.monitory.data.sources.MqttSource;
 import com.monitory.data.transformations.DangerLevelAssigner;
 import com.monitory.data.utils.KinesisSourceUtil;
 import com.monitory.data.utils.S3SinkUtil;
@@ -15,16 +14,11 @@ import com.monitory.data.utils.KafkaUtil;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
-import software.amazon.awssdk.services.waf.model.TimeWindow;
-import org.apache.flink.connector.file.sink.FileSink.RowFormatBuilder;
 
 import java.time.Duration;
-import java.time.Instant;
 
 public class FlinkSourceApplication {
     public static void main (String [] args) throws Exception {
@@ -37,7 +31,6 @@ public class FlinkSourceApplication {
         env.enableCheckpointing(60000); // 60초(1분)마다 체크포인트 생성
         env.getCheckpointConfig().setCheckpointTimeout(30_000); // 체크포인트 타임아웃 30초
         env.getCheckpointConfig().setMinPauseBetweenCheckpoints(500); // 체크포인트 간 최소 간격 500ms
-
 
         // 2. 데이터 소스 설정
         KinesisStreamsSource<String> kinesisStreamSource = KinesisSourceUtil.createKinesisSource();
@@ -99,7 +92,7 @@ public class FlinkSourceApplication {
 
         // 4-5. S3에 저장 (경로 제외하고 데이터만 저장)
         aggregatedStream
-                .map(element -> element.split("\\|", 2)[1]) // JSON 데이터만 추출
+//                .map(element -> element.split("\\|", 2)[1]) // JSON 데이터만 추출
                 .sinkTo(s3Sink);
 
         // 5. 실행

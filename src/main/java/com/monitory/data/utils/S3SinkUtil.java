@@ -5,6 +5,7 @@ import org.apache.flink.configuration.MemorySize;
 import org.apache.flink.connector.file.sink.FileSink;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.api.common.serialization.SimpleStringEncoder;
+import org.apache.flink.streaming.api.functions.sink.filesystem.OutputFileConfig;
 import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.DefaultRollingPolicy;
 import org.apache.flink.streaming.api.functions.sink.filesystem.BucketAssigner;
 
@@ -13,6 +14,11 @@ import java.time.Duration;
 public class S3SinkUtil {
     private static final BucketAssigner<String, String> s3BucketAssigner = new S3BucketAssigner();
     public static FileSink<String> createS3Sink(String s3Bucket) {
+        OutputFileConfig outputFileConfig = OutputFileConfig.builder()
+                .withPartPrefix("equip")
+                .withPartSuffix(".json")
+                .build();
+
         return FileSink
                 .forRowFormat(
                         new Path("s3a://" + s3Bucket + "/"),
@@ -21,11 +27,12 @@ public class S3SinkUtil {
                 .withBucketAssigner(s3BucketAssigner)
                 .withRollingPolicy(
                         DefaultRollingPolicy.builder()
-                                .withRolloverInterval(Duration.ofMinutes(5))
+                                .withRolloverInterval(Duration.ofMinutes(2))
                                 .withInactivityInterval(Duration.ofMinutes(1))
                                 .withMaxPartSize(MemorySize.ofMebiBytes(128))
                                 .build()
                 )
+                .withOutputFileConfig(outputFileConfig)
                 .build();
     }
 }
