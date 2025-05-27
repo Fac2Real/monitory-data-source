@@ -2,6 +2,7 @@ package com.monitory.data;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.monitory.data.sinks.BucketJson;
 import com.monitory.data.sinks.S3WindowFunction;
 import com.monitory.data.transformations.DangerLevelAssigner;
 import com.monitory.data.utils.KinesisSourceUtil;
@@ -88,12 +89,21 @@ public class FlinkSourceApplication {
                 .apply(new S3WindowFunction());
 
         // 4-4. S3 Sink 설정 (S3SinkUtil로 분리)
-        FileSink<String> s3Sink = S3SinkUtil.createS3Sink("monitory-test");
+        FileSink<BucketJson> s3Sink = S3SinkUtil.createS3Sink("monitory-test");
 
         // 4-5. S3에 저장 (경로 제외하고 데이터만 저장)
-        aggregatedStream
+        DataStream<BucketJson> bucketJsonStream = aggregatedStream
+                .map(element -> {
+                    String[] parts = element.split("\\|", 2);
+                    return new BucketJson(parts[0], parts[1]);
+                });
+
+        // 4-6.
+        bucketJsonStream.sinkTo(s3Sink);
+
+//        aggregatedStream
 //                .map(element -> element.split("\\|", 2)[1]) // JSON 데이터만 추출
-                .sinkTo(s3Sink);
+//                .sinkTo(s3Sink);
 
         // 5. 실행
         env.execute("Flink to Kafka Produce");

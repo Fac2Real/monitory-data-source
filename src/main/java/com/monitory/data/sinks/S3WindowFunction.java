@@ -19,9 +19,12 @@ public class S3WindowFunction implements WindowFunction<String, String, String, 
         System.out.println("S3WindowFunction - IN: Key=" + key + ", WindowStart=" + window.getStart());
         // 1. JSON 배열 생성
         ArrayNode jsonArray = mapper.createArrayNode();
+        StringBuilder jsonLines = new StringBuilder();
         int count = 0;
         for (String record : input) {
             jsonArray.add(mapper.readTree(record));
+            mapper.readTree(record);
+            jsonLines.append(record).append("\n");
             count++;
         }
         System.out.println("S3WindowFunction - PROCESSED: Input count=" + count + " for Key=" + key);
@@ -36,7 +39,7 @@ public class S3WindowFunction implements WindowFunction<String, String, String, 
 
             // 3. S3 경로와 JSON 데이터를 "|"로 구분하여 출력
             String s3Path = String.format("date=%s/zone_id=%s/equip_id=%s", date, zoneId, equipId);
-            String stringToCollect = s3Path + "|" + jsonArray;
+            String stringToCollect = s3Path + "|" + jsonLines.toString();
             System.out.println("S3WindowFunction - COLLECTING: " + stringToCollect.substring(0, Math.min(stringToCollect.length(), 200))); // 로그 확인!!!
             out.collect(stringToCollect);
 
