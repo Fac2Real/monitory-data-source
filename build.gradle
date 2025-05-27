@@ -47,6 +47,15 @@ tasks.withType(Zip) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
+tasks.withType(Test) {
+    maxHeapSize = "4g"
+}
+tasks.withType(JavaCompile) {
+    options.fork = true
+    options.forkOptions.jvmArgs = ['-Xmx4g']
+}
+
+
 distributions {
     main {
         contents {
@@ -79,6 +88,7 @@ dependencies {
     implementation "org.apache.flink:flink-connector-base:2.0.0"
     implementation "org.apache.flink:flink-clients:2.0.0"
     implementation 'org.apache.flink:flink-runtime-web:2.0.0'
+    implementation 'org.apache.flink:flink-s3-fs-hadoop:2.0.0'
 
     // MQTT 메세지 송수신을 위한 의존성 추가
     implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5'
@@ -92,10 +102,15 @@ dependencies {
     implementation "com.influxdb:influxdb-client-java:7.2.0"
 
     // S3
-    implementation "software.amazon.awssdk:s3:2.31.29"
+//    implementation "software.amazon.awssdk:s3:2.31.29"
+//    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.783'
 
     // Kinesis
     implementation("org.apache.flink:flink-connector-kinesis:5.0.0-1.20")
+
+    // hadoop-aws
+    implementation("org.apache.hadoop:hadoop-aws:3.4.1")
+    implementation 'com.amazonaws:aws-java-sdk-bundle:1.12.783'
 }
 test {
     useJUnitPlatform()
