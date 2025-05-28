@@ -25,7 +25,7 @@ public class S3SinkUtil {
 
         return FileSink
                 .forRowFormat(
-                        new Path("s3a://" + s3Bucket + "/"),
+                        new Path("s3a://" + s3Bucket + "/EQUIPMENT"),
                         new SimpleStringEncoder<BucketJson>("UTF-8"){
                             @Override
                             public void encode(BucketJson record, OutputStream stream) throws IOException {
@@ -36,8 +36,8 @@ public class S3SinkUtil {
                 .withBucketAssigner(s3BucketAssigner)
                 .withRollingPolicy(
                         DefaultRollingPolicy.builder()
-                                .withRolloverInterval(Duration.ofMinutes(2))
-                                .withInactivityInterval(Duration.ofMinutes(1))
+                                .withRolloverInterval(Duration.ofHours(1))
+                                .withInactivityInterval(Duration.ofMinutes(5))
                                 .withMaxPartSize(MemorySize.ofMebiBytes(128))
                                 .build()
                 )

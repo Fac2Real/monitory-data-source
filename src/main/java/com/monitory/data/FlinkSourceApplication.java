@@ -85,11 +85,11 @@ public class FlinkSourceApplication {
                     String equipId = node.get("equipId").asText("unknown");
                     return zoneId + "|" + equipId;
                 })
-                .window(TumblingProcessingTimeWindows.of(Duration.ofMinutes(3)))
+                .window(TumblingProcessingTimeWindows.of(Duration.ofHours(1)))
                 .apply(new S3WindowFunction());
 
         // 4-4. S3 Sink 설정 (S3SinkUtil로 분리)
-        FileSink<BucketJson> s3Sink = S3SinkUtil.createS3Sink("monitory-test");
+        FileSink<BucketJson> s3Sink = S3SinkUtil.createS3Sink("monitory-bucket");
 
         // 4-5. S3에 저장 (경로 제외하고 데이터만 저장)
         DataStream<BucketJson> bucketJsonStream = aggregatedStream
@@ -100,10 +100,6 @@ public class FlinkSourceApplication {
 
         // 4-6.
         bucketJsonStream.sinkTo(s3Sink);
-
-//        aggregatedStream
-//                .map(element -> element.split("\\|", 2)[1]) // JSON 데이터만 추출
-//                .sinkTo(s3Sink);
 
         // 5. 실행
         env.execute("Flink to Kafka Produce");
