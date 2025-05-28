@@ -29,11 +29,16 @@ pipeline {
         ]) {
           sh '''
             sudo cp "$APP_PROPS" src/main/resources/application.properties
+            sudo chmod 644 src/main/resources/application.properties
 
             sudo mkdir -p src/main/resources/certs
+            sudo chmod 755 src/main/resources/certs
             sudo cp "$ROOT_PEM"  src/main/resources/certs/root.pem
+            sudo chmod 644 src/main/resources/certs/root.pem
             sudo cp "$PRIV_KEY"  src/main/resources/certs/private.pem.key
+            sudo chmod 644 src/main/resources/certs/private.pem.key
             sudo cp "$CERT_PEM"  src/main/resources/certs/certificate.pem.crt
+            sudo chmod 644 src/main/resources/certs/certificate.pem.crt
           '''
         }
 
@@ -59,9 +64,15 @@ pipeline {
         publishChecks name: GH_CHECK_NAME,
                       status: 'IN_PROGRESS',
                       detailsURL: env.BUILD_URL
+        withCredentials([ file(credentialsId: 'backend-env', variable: 'ENV_FILE') ]) {
         sh '''
-./gradlew test --parallel
+set -o allexport
+source "$ENV_FILE"
+set +o allexport
+
+./gradlew test --no-daemon
 '''
+        }
       }
       post {
         success {
@@ -102,13 +113,14 @@ pipeline {
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
                           credentialsId: 'jenkins-access']]) {
           sh """
-aws ecr get-login-password --region ${AWS_DEFAULT_REGION} \
-  | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+./gradlew build --no-daemon -x test
 
 docker build -t ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${LATEST_TAG} .
 
 docker push ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${LATEST_TAG}
-          """
+"""
         }
         sshagent(credentials: ['monitory-temp']) {
           sh """
