@@ -33,6 +33,8 @@ public class FlinkSourceApplication {
         env.getCheckpointConfig().setCheckpointTimeout(30_000); // 체크포인트 타임아웃 30초
         env.getCheckpointConfig().setMinPauseBetweenCheckpoints(500); // 체크포인트 간 최소 간격 500ms
 
+        env.setParallelism(16);
+
         // 2. 데이터 소스 설정
         KinesisStreamsSource<String> kinesisStreamSource = KinesisSourceUtil.createKinesisSource();
 
