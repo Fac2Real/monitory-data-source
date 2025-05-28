@@ -28,12 +28,12 @@ pipeline {
           file (credentialsId: 'flink-cert-pem',   variable: 'CERT_PEM')
         ]) {
           sh '''
-            cp "$APP_PROPS" src/main/resources/application.properties
+            sudo cp "$APP_PROPS" src/main/resources/application.properties
 
-            mkdir -p src/main/resources/certs
-            cp "$ROOT_PEM"  src/main/resources/certs/root.pem
-            cp "$PRIV_KEY"  src/main/resources/certs/private.pem.key
-            cp "$CERT_PEM"  src/main/resources/certs/certificate.pem.crt
+            sudo mkdir -p src/main/resources/certs
+            sudo cp "$ROOT_PEM"  src/main/resources/certs/root.pem
+            sudo cp "$PRIV_KEY"  src/main/resources/certs/private.pem.key
+            sudo cp "$CERT_PEM"  src/main/resources/certs/certificate.pem.crt
           '''
         }
 
