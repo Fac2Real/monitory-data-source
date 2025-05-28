@@ -11,6 +11,11 @@ public class DangerLevelAssigner implements MapFunction<String, String>  {
     public String map(String value) throws Exception {
         ObjectNode jsonNode = (ObjectNode) mapper.readTree(value);
 
+        if (jsonNode.has("category") && "EQUIPMENT".equalsIgnoreCase(jsonNode.get("category").asText())) {
+            jsonNode.put("dangerLevel", 0);
+            return mapper.writeValueAsString(jsonNode);
+        }
+
         String sensorType = "";
         double sensorValue = Double.NaN;
         int dangerLevel = 0;
