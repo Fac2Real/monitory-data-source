@@ -19,8 +19,24 @@ pipeline {
 
   stages {
     /* 0) 환경 변수 설정 */
-    stage('Environment Setup') {
+    stage('Environment, Config Setup') {
       steps {
+        withCredentials([
+          file (credentialsId: 'flink-properties', variable: 'APP_PROPS'),
+          file (credentialsId: 'flink-root-pem',   variable: 'ROOT_PEM'),
+          file (credentialsId: 'flink-priv-key',   variable: 'PRIV_KEY'),
+          file (credentialsId: 'flink-cert-pem',   variable: 'CERT_PEM')
+        ]) {
+          sh '''
+            sudo cp "$APP_PROPS" src/main/resources/application.properties
+
+            sudo mkdir -p src/main/resources/certs
+            sudo cp "$ROOT_PEM"  src/main/resources/certs/root.pem
+            sudo cp "$PRIV_KEY"  src/main/resources/certs/private.pem.key
+            sudo cp "$CERT_PEM"  src/main/resources/certs/certificate.pem.crt
+          '''
+        }
+
         script {
           def rawUrl = sh(script: "git config --get remote.origin.url",
                         returnStdout: true).trim()
@@ -43,17 +59,9 @@ pipeline {
         publishChecks name: GH_CHECK_NAME,
                       status: 'IN_PROGRESS',
                       detailsURL: env.BUILD_URL
-
-        // Gradle 빌드 환경 변수 설정
-        withCredentials([ file(credentialsId: 'backend-env', variable: 'ENV_FILE') ]) {
         sh '''
-set -o allexport
-source "$ENV_FILE"
-set +o allexport
-
-./gradlew test --no-daemon
+./gradlew test --parallel
 '''
-        }
       }
       post {
         success {
@@ -68,7 +76,7 @@ set +o allexport
           slackSend channel: env.SLACK_CHANNEL,
                               tokenCredentialId: env.SLACK_CRED_ID,
                               color: '#ff0000',
-                              message: """<!here> :x: *Flink Test 실패*
+                              message: """:x: *Flink Test 실패*
           파이프라인: <${env.BUILD_URL}|열기>
           커밋: `${env.GIT_COMMIT}` – `${env.COMMIT_MSG}`
           (<${env.REPO_URL}/commit/${env.GIT_COMMIT}|커밋 보기>)
@@ -120,7 +128,7 @@ EOF
           slackSend channel: env.SLACK_CHANNEL,
                     tokenCredentialId: env.SLACK_CRED_ID,
                     color: '#36a64f',
-                    message: """<!here> :white_check_mark: *Flink CI/CD 성공*
+                    message: """:white_check_mark: *Flink CI/CD 성공*
 파이프라인: <${env.BUILD_URL}|열기>
 커밋: `${env.GIT_COMMIT}` – `${env.COMMIT_MSG}`
 (<${env.REPO_URL}/commit/${env.GIT_COMMIT}|커밋 보기>)
@@ -130,7 +138,7 @@ EOF
           slackSend channel: env.SLACK_CHANNEL,
                     tokenCredentialId: env.SLACK_CRED_ID,
                     color: '#ff0000',
-                    message: """<!here> :x: *Flink CI/CD 실패*
+                    message: """:x: *Flink CI/CD 실패*
 파이프라인: <${env.BUILD_URL}|열기>
 커밋: `${env.GIT_COMMIT}` – `${env.COMMIT_MSG}`
 (<${env.REPO_URL}/commit/${env.GIT_COMMIT}|커밋 보기>)
