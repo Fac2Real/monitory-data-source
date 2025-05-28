@@ -51,7 +51,7 @@ set -o allexport
 source "$ENV_FILE"
 set +o allexport
 
-./gradlew test --no-daemon
+./gradlew test --parallel
 '''
         }
       }

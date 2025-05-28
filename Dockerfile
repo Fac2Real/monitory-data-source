@@ -1,7 +1,7 @@
 FROM gradle:8.13-jdk17 AS builder
 WORKDIR /home/gradle/project
 COPY --chown=gradle:gradle . .
-RUN gradle build --no-daemon -x test
+RUN gradle build --parallel --no-daemon -x test
 
 FROM amazoncorretto:17-alpine
 
