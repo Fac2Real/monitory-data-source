@@ -19,8 +19,24 @@ pipeline {
 
   stages {
     /* 0) 환경 변수 설정 */
-    stage('Environment Setup') {
+    stage('Environment, Config Setup') {
       steps {
+        withCredentials([
+          file (credentialsId: 'flink-properties', variable: 'APP_PROPS'),
+          file (credentialsId: 'flink-root-pem',   variable: 'ROOT_PEM'),
+          file (credentialsId: 'flink-priv-key',   variable: 'PRIV_KEY'),
+          file (credentialsId: 'flink-cert-pem',   variable: 'CERT_PEM')
+        ]) {
+          sh '''
+            cp "$APP_PROPS" src/main/resources/application.properties
+
+            mkdir -p src/main/resources/certs
+            cp "$ROOT_PEM"  src/main/resources/certs/root.pem
+            cp "$PRIV_KEY"  src/main/resources/certs/private.pem.key
+            cp "$CERT_PEM"  src/main/resources/certs/certificate.pem.crt
+          '''
+        }
+
         script {
           def rawUrl = sh(script: "git config --get remote.origin.url",
                         returnStdout: true).trim()
@@ -43,17 +59,9 @@ pipeline {
         publishChecks name: GH_CHECK_NAME,
                       status: 'IN_PROGRESS',
                       detailsURL: env.BUILD_URL
-
-        // Gradle 빌드 환경 변수 설정
-        withCredentials([ file(credentialsId: 'backend-env', variable: 'ENV_FILE') ]) {
         sh '''
-set -o allexport
-source "$ENV_FILE"
-set +o allexport
-
 ./gradlew test --parallel
 '''
-        }
       }
       post {
         success {
