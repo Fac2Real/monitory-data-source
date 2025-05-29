@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.monitory.data.sinks.BucketJson;
 import com.monitory.data.sinks.S3WindowFunction;
 import com.monitory.data.transformations.DangerLevelAssigner;
+import com.monitory.data.transformations.FaultyAssigner;
 import com.monitory.data.utils.KinesisSourceUtil;
 import com.monitory.data.utils.S3SinkUtil;
 import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
@@ -61,6 +62,8 @@ public class FlinkSourceApplication {
         // 3-2. 데이터 처리: 이상치 검색
         DataStream<String> labelTransformedStream = timeTransformedStream
                 .map(new DangerLevelAssigner());
+        labelTransformedStream = labelTransformedStream
+                .map(new FaultyAssigner());
 
 
         // 4-1. 데이터 싱크: 콘솔에 출력 & kafka publish
