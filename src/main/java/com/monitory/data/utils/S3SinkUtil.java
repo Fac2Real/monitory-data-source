@@ -36,7 +36,7 @@ public class S3SinkUtil {
                 .withBucketAssigner(s3BucketAssigner)
                 .withRollingPolicy(
                         DefaultRollingPolicy.builder()
-                                .withRolloverInterval(Duration.ofMinutes(3))
+                                .withRolloverInterval(Duration.ofHours(1))
                                 .withInactivityInterval(Duration.ofMinutes(5))
                                 .withMaxPartSize(MemorySize.ofMebiBytes(128))
                                 .build()
