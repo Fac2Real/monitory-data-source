@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.flink.api.common.functions.MapFunction;
 
-public class DangerLevelAssigner implements MapFunction<String, String>  {
+public class EnvironmentDangerLevelAssigner implements MapFunction<String, String>  {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     @Override
