@@ -90,7 +90,7 @@ public class FlinkSourceApplication {
                     String equipId = node.get("equipId").asText("unknown");
                     return zoneId + "|" + equipId;
                 })
-                .window(TumblingProcessingTimeWindows.of(Duration.ofHours(1)))
+                .window(TumblingProcessingTimeWindows.of(Duration.ofMinutes(3)))
                 .apply(new S3WindowFunction());
 
         // 4-4. S3 Sink 설정 (S3SinkUtil로 분리)
