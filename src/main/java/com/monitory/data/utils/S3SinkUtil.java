@@ -38,7 +38,7 @@ public class S3SinkUtil {
                         DefaultRollingPolicy.builder()
                                 .withRolloverInterval(Duration.ofHours(1))
                                 .withInactivityInterval(Duration.ofMinutes(5))
-                                .withMaxPartSize(MemorySize.ofMebiBytes(128))
+                                .withMaxPartSize(MemorySize.ofMebiBytes(512))
                                 .build()
                 )
                 .withOutputFileConfig(outputFileConfig)
