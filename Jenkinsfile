@@ -8,6 +8,7 @@ pipeline {
     IMAGE_REPO_NAME    = 'flink'
     IMAGE_TAG          = "${env.GIT_COMMIT}"
     LATEST_TAG         = 'flink-latest'
+    PROD_TAG           = 'flink-prod-latest'
 
     /* GitHub Checks */
     GH_CHECK_NAME      = 'Flink Build Test'
@@ -22,15 +23,11 @@ pipeline {
     stage('Environment, Config Setup') {
       steps {
         withCredentials([
-          file (credentialsId: 'flink-properties', variable: 'APP_PROPS'),
           file (credentialsId: 'flink-root-pem',   variable: 'ROOT_PEM'),
           file (credentialsId: 'flink-priv-key',   variable: 'PRIV_KEY'),
           file (credentialsId: 'flink-cert-pem',   variable: 'CERT_PEM')
         ]) {
           sh '''
-            sudo cp "$APP_PROPS" src/main/resources/application.properties
-            sudo chmod 644 src/main/resources/application.properties
-
             sudo mkdir -p src/main/resources/certs
             sudo chmod 755 src/main/resources/certs
             sudo cp "$ROOT_PEM"  src/main/resources/certs/root.pem
@@ -61,6 +58,14 @@ pipeline {
         }
       }
       steps {
+        withCredentials([
+          file (credentialsId: 'flink-properties-ec2', variable: 'APP_PROPS')
+        ]) {
+          sh '''
+            sudo cp "$APP_PROPS" src/main/resources/application.properties
+            sudo chmod 644 src/main/resources/application.properties
+          '''
+        }
         publishChecks name: GH_CHECK_NAME,
                       status: 'IN_PROGRESS',
                       detailsURL: env.BUILD_URL
@@ -102,14 +107,20 @@ set +o allexport
     stage('Docker Build & Push (develop only)') {
       when {
         allOf {
-          anyOf {
-            branch 'develop'
-            branch 'main'
-          }
+          branch 'develop'
           not { changeRequest() }
         }
       }
       steps {
+        withCredentials([
+          file (credentialsId: 'flink-properties-ec2', variable: 'APP_PROPS')
+        ]) {
+          sh '''
+            sudo cp "$APP_PROPS" src/main/resources/application.properties
+            sudo chmod 644 src/main/resources/application.properties
+          '''
+        }
+
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
                           credentialsId: 'jenkins-access']]) {
           sh """
@@ -140,7 +151,7 @@ EOF
           slackSend channel: env.SLACK_CHANNEL,
                     tokenCredentialId: env.SLACK_CRED_ID,
                     color: '#36a64f',
-                    message: """:white_check_mark: *Flink CI/CD 성공*
+                    message: """:white_check_mark: *Flink develop branch CI/CD 성공*
 파이프라인: <${env.BUILD_URL}|열기>
 커밋: `${env.GIT_COMMIT}` – `${env.COMMIT_MSG}`
 (<${env.REPO_URL}/commit/${env.GIT_COMMIT}|커밋 보기>)
@@ -150,7 +161,64 @@ EOF
           slackSend channel: env.SLACK_CHANNEL,
                     tokenCredentialId: env.SLACK_CRED_ID,
                     color: '#ff0000',
-                    message: """:x: *Flink CI/CD 실패*
+                    message: """:x: *Flink develop branch CI/CD 실패*
+파이프라인: <${env.BUILD_URL}|열기>
+커밋: `${env.GIT_COMMIT}` – `${env.COMMIT_MSG}`
+(<${env.REPO_URL}/commit/${env.GIT_COMMIT}|커밋 보기>)
+"""
+        }
+      }
+    }
+
+
+    /* 3) main 전용 ─ Docker 이미지 빌드 & ECR Push */
+    stage('Docker Build & Push (main only)') {
+      when {
+        allOf {
+          branch 'main'
+          not { changeRequest() }
+        }
+      }
+      steps {
+        withCredentials([
+          file (credentialsId: 'flink-properties-k8s', variable: 'APP_PROPS')
+        ]) {
+          sh '''
+            sudo cp "$APP_PROPS" src/main/resources/application.properties
+            sudo chmod 644 src/main/resources/application.properties
+          '''
+        }
+
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
+                          credentialsId: 'jenkins-access']]) {
+          sh """
+aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+./gradlew build --no-daemon -x test
+
+docker build -t ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${PROD_TAG} .
+
+docker push ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${PROD_TAG}
+"""
+        }
+      }
+      /* Slack 알림 */
+      post {
+        success {
+          slackSend channel: env.SLACK_CHANNEL,
+                    tokenCredentialId: env.SLACK_CRED_ID,
+                    color: '#36a64f',
+                    message: """:white_check_mark: *Flink main branch CI 성공*
+파이프라인: <${env.BUILD_URL}|열기>
+커밋: `${env.GIT_COMMIT}` – `${env.COMMIT_MSG}`
+(<${env.REPO_URL}/commit/${env.GIT_COMMIT}|커밋 보기>)
+"""
+        }
+        failure {
+          slackSend channel: env.SLACK_CHANNEL,
+                    tokenCredentialId: env.SLACK_CRED_ID,
+                    color: '#ff0000',
+                    message: """:x: *Flink main branch CI 실패*
 파이프라인: <${env.BUILD_URL}|열기>
 커밋: `${env.GIT_COMMIT}` – `${env.COMMIT_MSG}`
 (<${env.REPO_URL}/commit/${env.GIT_COMMIT}|커밋 보기>)
