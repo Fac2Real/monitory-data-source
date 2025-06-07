@@ -27,6 +27,11 @@ public class FlinkSourceApplication {
     public static void main (String [] args) throws Exception {
         // 1. Flink 환경 설정
         Configuration conf = new Configuration();
+
+        conf.setString("metrics.reporters", "prom");
+        conf.setString("metrics.reporter.prom.factory.class", "org.apache.flink.metrics.prometheus.PrometheusReporterFactory");
+        conf.setString("metrics.reporter.prom.port", "9249");
+
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(conf);
         final ObjectMapper staticMapper = new ObjectMapper();
 
