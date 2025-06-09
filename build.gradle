@@ -9,7 +9,7 @@ version = '1.0-SNAPSHOT'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(11)
     }
 }
 
@@ -81,14 +81,14 @@ dependencies {
 
     implementation 'ch.qos.logback:logback-classic:1.2.6'
 
-    // flink
-    implementation "org.apache.flink:flink-streaming-java:2.0.0"
-    implementation "org.apache.flink:flink-connector-kafka:4.0.0-2.0"
-    implementation "org.apache.flink:flink-connector-files:2.0.0"
-    implementation "org.apache.flink:flink-connector-base:2.0.0"
-    implementation "org.apache.flink:flink-clients:2.0.0"
-    implementation 'org.apache.flink:flink-runtime-web:2.0.0'
-    implementation 'org.apache.flink:flink-s3-fs-hadoop:2.0.0'
+    // flink 1.15.4 with Scala 2.12
+    implementation "org.apache.flink:flink-streaming-java:1.15.4"
+    implementation "org.apache.flink:flink-connector-kafka:1.15.4"
+    implementation "org.apache.flink:flink-connector-files:1.15.4"
+    implementation "org.apache.flink:flink-connector-base:1.15.4"
+    implementation "org.apache.flink:flink-clients:1.15.4"
+    implementation "org.apache.flink:flink-runtime-web:1.15.4"
+    implementation "org.apache.flink:flink-s3-fs-hadoop:1.15.4"
 
     // MQTT 메세지 송수신을 위한 의존성 추가
     implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5'
@@ -102,10 +102,10 @@ dependencies {
     implementation "com.influxdb:influxdb-client-java:7.2.0"
 
     // prometheus
-    implementation("org.apache.flink:flink-metrics-prometheus:2.0.0")
-
+    implementation "org.apache.flink:flink-metrics-prometheus:1.15.4"
+    
     // Kinesis
-    implementation("org.apache.flink:flink-connector-kinesis:5.0.0-1.20")
+    implementation "org.apache.flink:flink-connector-kinesis:1.15.4"
 
     // hadoop-aws
     implementation("org.apache.hadoop:hadoop-aws:3.4.1")

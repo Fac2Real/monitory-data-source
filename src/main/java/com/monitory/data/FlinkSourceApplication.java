@@ -9,9 +9,7 @@ import com.monitory.data.transformations.FaultyAssigner;
 import com.monitory.data.transformations.WearableDangerLevelAssigner;
 import com.monitory.data.utils.KinesisSourceUtil;
 import com.monitory.data.utils.S3SinkUtil;
-import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
 import org.apache.flink.connector.file.sink.FileSink;
-import org.apache.flink.connector.kinesis.source.KinesisStreamsSource;
 import com.monitory.data.transformations.TimeStampAssigner;
 import com.monitory.data.utils.KafkaUtil;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
@@ -20,6 +18,8 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
+import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.connectors.kinesis.FlinkKinesisConsumer;
 
 import java.time.Duration;
 
@@ -43,22 +43,22 @@ public class FlinkSourceApplication {
         env.setParallelism(16);
 
         // 2. 데이터 소스 설정
-        KinesisStreamsSource<String> kinesisStreamSource = KinesisSourceUtil.createKinesisSource();
+        FlinkKinesisConsumer<String> kinesisConsumer = KinesisSourceUtil.createKinesisSource();
 
-        DataStream<String> sourceStream = env.fromSource(
-                kinesisStreamSource,
-//                WatermarkStrategy.noWatermarks(),
-                WatermarkStrategy.<String>forBoundedOutOfOrderness(Duration.ofSeconds(5)) // json의 timestamp 기준 5초 지연 허용, 이후 데이터 삭제
-                        .withTimestampAssigner((SerializableTimestampAssigner<String>) (element, recordTimestamp) -> {
-                            try {
-                                JsonNode node = staticMapper.readTree(element);
-                                return node.get("utc_ingestion_time").asLong();
-                            } catch (Exception e) {
-                                return recordTimestamp;
-                            }
-                        }).withIdleness(Duration.ofMinutes(1)),
-                "Kinesis-Streams-Source"
-        ).returns(TypeInformation.of(String.class));
+        DataStream<String> sourceStream = env.addSource(kinesisConsumer, "Kinesis-Streams-Source")
+                .assignTimestampsAndWatermarks(
+                        WatermarkStrategy.<String>forBoundedOutOfOrderness(Duration.ofSeconds(5))
+                                .withTimestampAssigner((element, recordTimestamp) -> {
+                                    try {
+                                        JsonNode node = staticMapper.readTree(element);
+                                        return node.get("utc_ingestion_time").asLong();
+                                    } catch (Exception e) {
+                                        return recordTimestamp;
+                                    }
+                                })
+                                .withIdleness(Duration.ofMinutes(1))
+                )
+                .returns(TypeInformation.of(String.class));
 //        DataStream<String> sourceStream = env.fromSource(new MqttSource(), WatermarkStrategy.noWatermarks(), "MQTT-Source");
 
         // 3-1. 데이터 처리: Time Stamp 출력
@@ -98,7 +98,7 @@ public class FlinkSourceApplication {
                     String equipId = node.get("equipId").asText("unknown");
                     return zoneId + "|" + equipId;
                 })
-                .window(TumblingProcessingTimeWindows.of(Duration.ofHours(1)))
+                .window(TumblingProcessingTimeWindows.of(Time.hours(1)))
                 .apply(new S3WindowFunction());
 
         // 4-4. S3 Sink 설정 (S3SinkUtil로 분리)
