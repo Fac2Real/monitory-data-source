@@ -2,9 +2,10 @@ package com.monitory.data.utils;
 
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.connector.kinesis.source.KinesisStreamsSource;
-import org.apache.flink.connector.kinesis.source.config.KinesisSourceConfigOptions;
+import org.apache.flink.streaming.connectors.kinesis.FlinkKinesisConsumer;
 import org.apache.flink.streaming.connectors.kinesis.config.ConsumerConfigConstants;
+
+import java.util.Properties;
 
 public class KinesisSourceUtil {
 
@@ -17,28 +18,19 @@ public class KinesisSourceUtil {
      *
      * @return 구성된 KinesisStreamsSource 인스턴스
      */
-    public static KinesisStreamsSource<String> createKinesisSource() {
-        Configuration sourceConfig = new Configuration();
-        sourceConfig.setString("aws.region", AWS_REGION);
-        sourceConfig.set(KinesisSourceConfigOptions.STREAM_INITIAL_POSITION, KinesisSourceConfigOptions.InitialPosition.LATEST);
-
-        // 최대 레코드 수 (기본값 10,000 → 500으로 낮춤)
-        sourceConfig.setString(ConsumerConfigConstants.SHARD_GETRECORDS_MAX, "500");
-
-        // GetRecords 호출 간격 (기본 200ms → 3000ms로 증가)
-        sourceConfig.setString(ConsumerConfigConstants.SHARD_GETRECORDS_INTERVAL_MILLIS, "3000");
-
-        // 재시도 백오프 설정 추가
-        sourceConfig.setString(ConsumerConfigConstants.SHARD_GETRECORDS_BACKOFF_BASE, "1000");
-        sourceConfig.setString(ConsumerConfigConstants.SHARD_GETRECORDS_BACKOFF_MAX, "5000");
-
-        // KinesisSource 빌더 사용
-        KinesisStreamsSource<String> kinesisStreamsSource = KinesisStreamsSource.<String>builder()
-                .setStreamArn(KINESIS_STREAM_ARN)
-                .setDeserializationSchema(new SimpleStringSchema())
-                .setSourceConfig(sourceConfig)
-                .build();
-
-        return kinesisStreamsSource;
+    public static FlinkKinesisConsumer<String> createKinesisSource() {
+        Properties kinesisConsumerConfig = new Properties();
+        kinesisConsumerConfig.setProperty(ConsumerConfigConstants.AWS_REGION, AWS_REGION);
+        kinesisConsumerConfig.setProperty(ConsumerConfigConstants.STREAM_INITIAL_POSITION, "LATEST");
+        kinesisConsumerConfig.setProperty(ConsumerConfigConstants.SHARD_GETRECORDS_MAX, "500");
+        kinesisConsumerConfig.setProperty(ConsumerConfigConstants.SHARD_GETRECORDS_INTERVAL_MILLIS, "3000");
+        kinesisConsumerConfig.setProperty(ConsumerConfigConstants.SHARD_GETRECORDS_BACKOFF_BASE, "1000");
+        kinesisConsumerConfig.setProperty(ConsumerConfigConstants.SHARD_GETRECORDS_BACKOFF_MAX, "5000");
+        // KINESIS_STREAM_ARN이 아닌, 스트림 이름("IoTtoFlink")을 명시해야 함
+        return new FlinkKinesisConsumer<>(
+                "IoTtoFlink",
+                new SimpleStringSchema(),
+                kinesisConsumerConfig
+        );
     }
 }

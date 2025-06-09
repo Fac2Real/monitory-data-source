@@ -29,7 +29,7 @@ public class S3SinkUtil {
                         new SimpleStringEncoder<BucketJson>("UTF-8"){
                             @Override
                             public void encode(BucketJson record, OutputStream stream) throws IOException {
-                                stream.write((record.json() + "\n").getBytes(StandardCharsets.UTF_8));
+                                stream.write((record.getJson() + "\n").getBytes(StandardCharsets.UTF_8));
                             }
                         }
                 )
