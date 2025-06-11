@@ -16,6 +16,10 @@ pipeline {
     /* Slack */
     SLACK_CHANNEL      = '#ci-cd'
     SLACK_CRED_ID      = 'slack-factoreal-token'   // Slack App OAuth Token
+
+    /* Argo CD */
+    ARGOCD_SERVER           = 'argocd.monitory.space'   // Argo CD server endpoint
+    ARGOCD_APPLICATION_NAME = 'flink'
   }
 
   stages {
@@ -133,16 +137,14 @@ docker build -t ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${LATEST_TAG} .
 docker push ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${LATEST_TAG}
 """
         }
-        sshagent(credentials: ['monitory-temp']) {
-          sh """
-ssh -o StrictHostKeyChecking=no ec2-user@43.200.39.139 <<'EOF'
-set -e
-cd datastream
-aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-docker-compose -f docker-compose-source.yml down -v
-docker-compose -f docker-compose-source.yml up -d --pull always
-EOF
-"""
+        withCredentials([string(credentialsId: 'argo-jenkins-token', variable: 'ARGOCD_AUTH_TOKEN')]) {
+          sh '''
+argocd --server $ARGOCD_SERVER --insecure --grpc-web \
+        app sync $ARGOCD_APPLICATION_NAME
+
+argocd --server $ARGOCD_SERVER --insecure --grpc-web \
+        app wait $ARGOCD_APPLICATION_NAME --health --timeout 300
+'''
         }
       }
       /* Slack 알림 */
