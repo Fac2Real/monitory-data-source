@@ -18,6 +18,7 @@ pipeline {
     SLACK_CRED_ID      = 'slack-factoreal-token'   // Slack App OAuth Token
 
     /* Argo CD */
+    HELM_VALUES_PATH        = 'monitory-helm-charts/flink/values.yaml'
     ARGOCD_SERVER           = 'argocd.monitory.space'   // Argo CD server endpoint
     ARGOCD_APPLICATION_NAME = 'flink'
   }
@@ -107,7 +108,7 @@ set +o allexport
 
 
 
-    /* 2) develop 전용 ─ Docker 이미지 빌드 & ECR Push & Deploy (EC2) */
+    /* 2) develop 전용 ─ Docker 이미지 빌드 & ECR Push */
     stage('Docker Build & Push (develop only)') {
       when {
         allOf {
@@ -137,15 +138,6 @@ docker build -t ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${LATEST_TAG} .
 docker push ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${LATEST_TAG}
 """
         }
-        withCredentials([string(credentialsId: 'argo-jenkins-token', variable: 'ARGOCD_AUTH_TOKEN')]) {
-          sh '''
-argocd --server $ARGOCD_SERVER --insecure --grpc-web \
-        app sync $ARGOCD_APPLICATION_NAME
-
-argocd --server $ARGOCD_SERVER --insecure --grpc-web \
-        app wait $ARGOCD_APPLICATION_NAME --health --timeout 300
-'''
-        }
       }
       /* Slack 알림 */
       post {
@@ -153,7 +145,7 @@ argocd --server $ARGOCD_SERVER --insecure --grpc-web \
           slackSend channel: env.SLACK_CHANNEL,
                     tokenCredentialId: env.SLACK_CRED_ID,
                     color: '#36a64f',
-                    message: """:white_check_mark: *Flink develop branch CI/CD 성공*
+                    message: """:white_check_mark: *Flink develop branch CI 성공*
 파이프라인: <${env.BUILD_URL}|열기>
 커밋: `${env.GIT_COMMIT}` – `${env.COMMIT_MSG}`
 (<${env.REPO_URL}/commit/${env.GIT_COMMIT}|커밋 보기>)
@@ -163,7 +155,7 @@ argocd --server $ARGOCD_SERVER --insecure --grpc-web \
           slackSend channel: env.SLACK_CHANNEL,
                     tokenCredentialId: env.SLACK_CRED_ID,
                     color: '#ff0000',
-                    message: """:x: *Flink develop branch CI/CD 실패*
+                    message: """:x: *Flink develop branch CI 실패*
 파이프라인: <${env.BUILD_URL}|열기>
 커밋: `${env.GIT_COMMIT}` – `${env.COMMIT_MSG}`
 (<${env.REPO_URL}/commit/${env.GIT_COMMIT}|커밋 보기>)
@@ -198,9 +190,10 @@ aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --usern
 
 ./gradlew build --no-daemon -x test
 
-docker build -t ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${PROD_TAG} .
+docker build -t ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${PROD_TAG} -t ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${env.GIT_COMMIT} .
 
 docker push ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${PROD_TAG}
+docker push ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${env.GIT_COMMIT}
 """
         }
       }
@@ -224,6 +217,66 @@ docker push ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${PROD_TAG}
 파이프라인: <${env.BUILD_URL}|열기>
 커밋: `${env.GIT_COMMIT}` – `${env.COMMIT_MSG}`
 (<${env.REPO_URL}/commit/${env.GIT_COMMIT}|커밋 보기>)
+"""
+        }
+      }
+    }
+
+    /* 4) main 전용 ─ Argo CD 배포 */
+    stage('Deploy (main only)') {
+      when {
+        allOf {
+          branch 'main'
+          not { changeRequest() }
+        }
+      }
+      steps {
+        withCredentials([string(credentialsId: 'monitory-iac-github-token', variable: 'GIT_TOKEN')]){
+          sh """
+git clone https://${GIT_TOKEN}@github.com/Fac2Real/monitory-iac.git ${env.GIT_COMMIT}
+cd ${env.GIT_COMMIT}
+git checkout deploy
+git fetch origin main
+git merge --ff-only origin/main
+yq -i ".image.tag = \\"${env.GIT_COMMIT}\\"" ${HELM_VALUES_PATH}
+git config user.name  "ci-bot"
+git config user.email "ci-bot@monitory.space"
+git add ${HELM_VALUES_PATH}
+git commit -m "ci(${ARGOCD_APPLICATION_NAME}): bump image to ${env.GIT_COMMIT})"
+git push https://${GIT_TOKEN}@github.com/Fac2Real/monitory-iac.git deploy
+          """
+        }
+
+        withCredentials([string(credentialsId: 'argo-jenkins-token', variable: 'ARGOCD_AUTH_TOKEN')]) {
+          sh '''
+argocd --server $ARGOCD_SERVER --insecure --grpc-web \
+        app sync $ARGOCD_APPLICATION_NAME
+
+argocd --server $ARGOCD_SERVER --insecure --grpc-web \
+        app wait $ARGOCD_APPLICATION_NAME --health --timeout 300
+'''
+        }
+      }
+      /* Slack 알림 */
+      post {
+        success {
+          slackSend channel: env.SLACK_CHANNEL,
+                    tokenCredentialId: env.SLACK_CRED_ID,
+                    color: '#36a64f',
+                    message: """:white_check_mark: *Flink main branch CD 성공*
+파이프라인: <${env.BUILD_URL}|열기>
+커밋: `${env.GIT_COMMIT}` – `${env.COMMIT_MSG}`
+(<${env.REPO_URL}/commit/${env.GIT_COMMIT}|커밋 보기>) (<https://argocd.monitory.space/applications/argocd/flink|Argo CD 보기>)
+"""
+        }
+        failure {
+          slackSend channel: env.SLACK_CHANNEL,
+                    tokenCredentialId: env.SLACK_CRED_ID,
+                    color: '#ff0000',
+                    message: """:x: *Flink main branch CI/CD 실패*
+파이프라인: <${env.BUILD_URL}|열기>
+커밋: `${env.GIT_COMMIT}` – `${env.COMMIT_MSG}`
+(<${env.REPO_URL}/commit/${env.GIT_COMMIT}|커밋 보기>) (<https://argocd.monitory.space/applications/argocd/flink|Argo CD 보기>)
 """
         }
       }
