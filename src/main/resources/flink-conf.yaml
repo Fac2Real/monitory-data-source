@@ -10,8 +10,10 @@ jobmanager:
 
 taskmanager:
   heap:
-    mb: 2048
+    mb: 4096
   numberOfTaskSlots: 16
 
 rest:
   port: 8081
+
+env.java.opts.taskmanager: "-XX:+UseG1GC"
